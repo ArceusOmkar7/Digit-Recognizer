@@ -40,4 +40,15 @@ http://127.0.0.1:8000/home
 - **Backend:** FastAPI, joblib, scikit-learn
 - **Frontend:** HTML, Tailwind CSS, Canvas API
 
+## Dataset and Metrics
+
+The Digits_Dataset.ipynb notebook contains data analysis and performance metrics for the digit recognition models. Key metrics include:
+- Accuracy for KNN and SVM models.
+- Data visualization for sample digits and prediction results.
+
+| Model | Accuracy |
+|-------|----------|
+| KNN   | 98%      |
+| SVM   | 97%      |
+
 Happy coding! 💻😊

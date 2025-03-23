@@ -15,12 +15,12 @@ import os
 # Loading the model
 try:
     knn_model = joblib.load("./models/knn_model.joblib")
-    svm_model = joblib.load("./models/svm_model.joblib")
-    print("Models Loaded")
+    # svm_model = joblib.load("./models/svm_model.joblib")
+    print("Model Loaded")
     print(
         f"Number of features expected by knn_model: {knn_model.n_features_in_}")
-    print(
-        f"Number of features expected by svm_model: {svm_model.n_features_in_}")
+    # print(
+    #     f"Number of features expected by svm_model: {svm_model.n_features_in_}")
 except Exception as e:
     print(f"Error loading model: {e}")
 
@@ -83,10 +83,7 @@ async def predict(req: Request):
         # Convert image to NumPy array and normalize to 0-16
         image_array = np.array(image, dtype=np.float32).reshape(1, -1)
 
-        if model_name == "knn_model":
-            prediction = knn_model.predict(image_array)
-        else:
-            prediction = svm_model.predict(image_array)
+        prediction = knn_model.predict(image_array)
 
         return {"prediction": int(prediction[0])}
 

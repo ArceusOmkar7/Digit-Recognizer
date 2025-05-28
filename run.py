@@ -88,14 +88,22 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
 
+    # Check if running in production (Render environment)
+    is_production = os.environ.get("PORT") is not None
+
     # Run checks
-    check_virtual_environment()
+    if not is_production:
+        check_virtual_environment()
 
     if not check_dependencies():
         sys.exit(1)
 
     if not check_model_file():
-        sys.exit(1)
+        if is_production:
+            print(
+                "⚠ Model file not found, but continuing in production (Git LFS may still be downloading)")
+        else:
+            sys.exit(1)
 
     # Run the server
     run_server()

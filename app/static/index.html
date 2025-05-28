@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MNIST Digit Recognizer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      #canvas {
+        border: 2px solid #333;
+        cursor: crosshair;
+        touch-action: none;
+        background-color: black;
+      }
+      .probability-bar {
+        height: 20px;
+        margin-bottom: 4px;
+        background-color: #3b82f6;
+        transition: width 0.3s ease;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+      <header class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800">MNIST Digit Recognizer</h1>
+        <p class="text-lg text-gray-600">
+          Draw a digit (0-9) on the canvas and see the prediction
+        </p>
+      </header>
+
+      <main class="flex flex-col lg:flex-row items-center justify-center gap-8">
+        <!-- Canvas Section -->
+        <div class="bg-white p-6 rounded-lg shadow-md">
+          <h2 class="text-xl font-semibold mb-4 text-center">Draw Here</h2>
+          <div class="flex justify-center mb-4">
+            <canvas
+              id="canvas"
+              width="280"
+              height="280"
+              class="rounded-md"
+            ></canvas>
+          </div>
+          <div class="flex justify-center gap-4">
+            <button
+              id="clear-button"
+              class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+              Clear Canvas
+            </button>
+            <button
+              id="predict-button"
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Predict Digit
+            </button>
+          </div>
+        </div>
+
+        <!-- Results Section -->
+        <div
+          class="bg-white p-6 rounded-lg shadow-md min-w-[320px] w-full lg:w-auto"
+        >
+          <h2 class="text-xl font-semibold mb-4 text-center">Results</h2>
+          <div class="flex flex-col lg:flex-row gap-6">
+            <!-- Prediction -->
+            <div
+              id="prediction-container"
+              class="flex flex-col items-center justify-center mb-4 lg:mb-0"
+            >
+              <h3 class="text-lg font-semibold mb-2">Prediction</h3>
+              <div id="prediction" class="text-8xl font-bold text-gray-800">
+                ?
+              </div>
+            </div>
+
+            <!-- Probabilities -->
+            <div class="w-full">
+              <h3 class="text-lg font-semibold mb-2">Probabilities</h3>
+              <div id="probabilities-container">
+                <!-- Probabilities will be dynamically added here -->
+                <div class="text-center text-gray-600">
+                  Draw a digit and click "Predict"
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mt-4">
+            <div id="processing" class="text-center text-gray-600 hidden">
+              Processing...
+            </div>
+            <div id="error" class="text-center text-red-600 hidden"></div>
+          </div>
+        </div>
+      </main>
+
+      <footer class="mt-8 text-center text-gray-600">
+        <p>MNIST Digit Recognizer using RandomForest model</p>
+      </footer>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        const clearButton = document.getElementById("clear-button");
+        const predictButton = document.getElementById("predict-button");
+        const predictionEl = document.getElementById("prediction");
+        const probabilitiesContainer = document.getElementById(
+          "probabilities-container"
+        );
+        const processingEl = document.getElementById("processing");
+        const errorEl = document.getElementById("error");
+
+        let isDrawing = false;
+
+        // Set white stroke on black background for better MNIST compatibility
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 10;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+
+        // Clear the canvas to black
+        function clearCanvas() {
+          ctx.fillStyle = "black";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          predictionEl.textContent = "?";
+          probabilitiesContainer.innerHTML =
+            '<div class="text-center text-gray-600">Draw a digit and click "Predict"</div>';
+          errorEl.classList.add("hidden");
+        }
+
+        // Call clearCanvas initially to make the canvas black
+        clearCanvas();
+
+        // Drawing event listeners
+        canvas.addEventListener("mousedown", startDrawing);
+        canvas.addEventListener("mousemove", draw);
+        canvas.addEventListener("mouseup", stopDrawing);
+        canvas.addEventListener("mouseout", stopDrawing);
+
+        // Touch support for mobile
+        canvas.addEventListener("touchstart", handleTouchStart);
+        canvas.addEventListener("touchmove", handleTouchMove);
+        canvas.addEventListener("touchend", stopDrawing);
+
+        // Clear button
+        clearButton.addEventListener("click", clearCanvas);
+
+        // Predict button
+        predictButton.addEventListener("click", predictDigit);
+
+        function startDrawing(e) {
+          isDrawing = true;
+          draw(e);
+        }
+
+        function draw(e) {
+          if (!isDrawing) return;
+
+          let x, y;
+          if (e.type === "mousemove") {
+            x = e.offsetX;
+            y = e.offsetY;
+          } else {
+            // Touch event
+            const rect = canvas.getBoundingClientRect();
+            x = e.touches[0].clientX - rect.left;
+            y = e.touches[0].clientY - rect.top;
+          }
+
+          ctx.lineTo(x, y);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+        }
+
+        function stopDrawing() {
+          isDrawing = false;
+          ctx.beginPath();
+        }
+
+        function handleTouchStart(e) {
+          e.preventDefault();
+          startDrawing(e);
+        }
+
+        function handleTouchMove(e) {
+          e.preventDefault();
+          draw(e);
+        }
+
+        // Display probabilities as a bar chart
+        function displayProbabilities(probabilities) {
+          probabilitiesContainer.innerHTML = "";
+
+          // Sort digits by probability (descending)
+          const sortedDigits = Object.keys(probabilities).sort(
+            (a, b) => probabilities[b] - probabilities[a]
+          );
+
+          // Create bar for each digit
+          sortedDigits.forEach((digit) => {
+            const probability = probabilities[digit];
+            const percentage = (probability * 100).toFixed(2);
+
+            const barContainer = document.createElement("div");
+            barContainer.className = "flex items-center mb-2";
+
+            const digitLabel = document.createElement("div");
+            digitLabel.className = "w-12 text-center font-bold text-gray-700";
+            digitLabel.textContent = digit;
+
+            const barWrapper = document.createElement("div");
+            barWrapper.className = "flex-1 bg-gray-200 rounded-full h-5";
+
+            const bar = document.createElement("div");
+            bar.className = "bg-blue-600 h-5 rounded-full";
+            bar.style.width = `${percentage}%`;
+
+            const percentageLabel = document.createElement("div");
+            percentageLabel.className = "w-20 text-right text-sm text-gray-600";
+            percentageLabel.textContent = `${percentage}%`;
+
+            barWrapper.appendChild(bar);
+            barContainer.appendChild(digitLabel);
+            barContainer.appendChild(barWrapper);
+            barContainer.appendChild(percentageLabel);
+
+            probabilitiesContainer.appendChild(barContainer);
+          });
+        }
+
+        async function predictDigit() {
+          try {
+            // Show processing state
+            processingEl.classList.remove("hidden");
+            errorEl.classList.add("hidden");
+
+            // Get image data from canvas
+            const imageData = canvas.toDataURL("image/png");
+
+            // Send to API
+            const response = await fetch("/predict", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ image: imageData }),
+            });
+
+            if (!response.ok) {
+              throw new Error("Failed to get prediction");
+            }
+
+            const result = await response.json();
+
+            // Display prediction
+            predictionEl.textContent = result.prediction;
+
+            // Display probabilities
+            displayProbabilities(result.probabilities);
+          } catch (error) {
+            console.error("Error:", error);
+            errorEl.textContent = error.message;
+            errorEl.classList.remove("hidden");
+          } finally {
+            processingEl.classList.add("hidden");
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

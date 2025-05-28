@@ -27,6 +27,8 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Load model
 model_path = os.path.join("models", "random_forest_clf.joblib")
+if not os.path.exists(model_path):
+    raise FileNotFoundError(f"Model file not found: {model_path}")
 model = joblib.load(model_path)
 
 # Define request model
